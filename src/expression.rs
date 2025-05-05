@@ -75,20 +75,17 @@ impl Expression {
     pub fn expectation(self) -> Natural {
         if self.is_empty() {
             Natural::zero()
-        } else if self == Self::from(Pair::OneZero) {
+        } else if self.prefix() == Ladder::Dagger {
+            Natural::zero()
+        } else if self.suffix() == Ladder::Dagger {
             Natural::zero()
         } else if self == Self::from(Pair::ZeroOne) {
             Natural::unit()
         } else {
-            match (self.prefix(), self.suffix()) {
-                (Ladder::Normal, _) | (_, Ladder::Dagger) => Natural::zero(),
-                (Ladder::Dagger, Ladder::Normal) => {
-                    let (left, unit, rght) = self.split();
-                    let removed = left * rght;
-                    let swapped = left * unit * rght;
-                    swapped.expectation() + removed.expectation()
-                }
-            }
+            let (left, unit, rght) = self.split();
+            let removed = left * rght;
+            let swapped = left * unit * rght;
+            swapped.expectation() + removed.expectation()
         }
     }
 
