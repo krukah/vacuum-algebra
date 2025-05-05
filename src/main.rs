@@ -1,0 +1,246 @@
+use std::ops::Not;
+
+fn main() {
+    // // all 2-character expressions
+    assert!(Expression::from("01").expectation() == Natural::unit()); // non-zero
+    assert!(Expression::from("10").expectation() == Natural::zero());
+    assert!(Expression::from("00").expectation() == Natural::zero());
+    assert!(Expression::from("11").expectation() == Natural::zero());
+
+    // // all 3-character expressions
+    assert!(Expression::from("001").expectation() == Natural::zero());
+    assert!(Expression::from("011").expectation() == Natural::zero());
+    assert!(Expression::from("000").expectation() == Natural::zero());
+    assert!(Expression::from("100").expectation() == Natural::zero());
+    assert!(Expression::from("010").expectation() == Natural::zero());
+    assert!(Expression::from("101").expectation() == Natural::zero());
+    assert!(Expression::from("110").expectation() == Natural::zero());
+    assert!(Expression::from("111").expectation() == Natural::zero());
+}
+
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+/// represents composition of ladder operators
+struct Expression {
+    bits: u64,
+    size: usize,
+}
+/// typesafe infallible Pair conversion
+impl From<Pair> for Expression {
+    fn from(value: Pair) -> Self {
+        match value {
+            Pair::ZeroOne => Self::from("01"),
+            Pair::OneZero => Self::from("10"),
+        }
+    }
+}
+/// typesafe infallible Ladder conversion
+impl From<Ladder> for Expression {
+    fn from(value: Ladder) -> Self {
+        match value {
+            Ladder::T => Self::from("1"),
+            Ladder::F => Self::from("0"),
+        }
+    }
+}
+impl<'a> From<&'a str> for Expression {
+    fn from(value: &'a str) -> Self {
+        assert!(value.len() <= 64);
+        Self {
+            size: value.len(),
+            bits: value.chars().fold(0u64, |acc, char| {
+                (acc << 1) | char.to_digit(2).unwrap() as u64
+            }),
+        }
+    }
+}
+/// typesafe infallible bit-map conversion
+impl From<(u64, usize)> for Expression {
+    fn from((bits, size): (u64, usize)) -> Self {
+        assert!(size <= 64);
+        Self { bits, size }
+    }
+}
+/// helpful for debugging
+impl std::fmt::Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_empty() {
+            write!(f, "{:_>w$}", "", w = 64 - self.size())
+        } else {
+            write!(
+                f,
+                "{:_>width1$}{:0>width2$b}",
+                "",
+                self.bits,
+                width1 = 64 - self.size(),
+                width2 = 00 + self.size(),
+            )
+        }
+    }
+}
+/// concatenation
+impl std::ops::Mul for Expression {
+    type Output = Self;
+    fn mul(self, rhs: Self) -> Self::Output {
+        Self::concatenate(self, rhs)
+    }
+}
+impl Expression {
+    /// calculate the expectation value recursively
+    fn expectation(self) -> Natural {
+        if self.is_empty() {
+            Natural::zero()
+        } else if self == Self::from(Pair::OneZero) {
+            Natural::zero()
+        } else if self == Self::from(Pair::ZeroOne) {
+            Natural::unit()
+        } else {
+            match (self.prefix(), self.suffix()) {
+                (Ladder::T, _) | (_, Ladder::F) => Natural::zero(),
+                (Ladder::F, Ladder::T) => {
+                    let (left, unit, rght) = self.split();
+                    let removed = left * rght;
+                    let swapped = left * unit * rght;
+                    swapped.expectation() + removed.expectation()
+                }
+            }
+        }
+    }
+    /// read the length
+    fn size(&self) -> usize {
+        self.size
+    }
+    /// split the expression into three parts,
+    /// assuming there is a middle unit to extract
+    /// eagerly
+    fn split(self) -> (Self, Self, Self) {
+        // constants that are bit-wise representations of Pairs,
+        // but not actually typed as Pairs, useful to find
+        // position of first occurence of FLAG
+        //
+        // self = 0b_1010_1111 (binary representation)
+        // FLAG = 0b_01
+        // MASK = 0b_11
+        // i    = 3 (position of first occurrence of `01`)
+        //
+        // LEFT CALCULATION:
+        // self.0                         = 0b_1010_1111
+        // i                              =         3...
+        // u64::MAX                       = 0b_1111_1111
+        // u64::MAX << (i + 2)            = 0b_1111_1111 << 5
+        //                                = 0b_1110_0000
+        // self.0 & (u64::MAX << (i + 2)) = 0b_1010_1111
+        //                                & 0b_1110_0000
+        //                                = 0b_1010_0000
+        //
+        // RIGHT CALCULATION:
+        // 1 << i                         = 1 << 3
+        //                                = 0b______1000
+        // (1 << i) - 1                   = 0b______1000 - 1
+        //                                = 0b______0111
+        // self.0 & ((1 << i) - 1)        = 0b_1010_1111
+        //                                & 0b______0111
+        //                                = 0b______0111
+        //
+        // RESULT:
+        // left = 0b_101_00_000 => Operator(_)
+        // pair = 0b_____01_000 => Pair::OneZero
+        // rght = 0b________111 => Operator(_)
+        const MASK: u64 = 0b11;
+        const FLAG: u64 = 0b01;
+        let i = (0u64..64u64)
+            .map(|i| ((self.bits & (MASK << i)), FLAG << i))
+            .enumerate()
+            .find(|(_, (self_bits, flag_bits))| self_bits == flag_bits)
+            .map(|(occurence, _)| occurence)
+            .expect("there must be an instance of 01, from upstream assertion");
+        let size_rght = i;
+        let size_left = self.size() - i - 2;
+        let mask_rght = (1 << (i + 0)) - 1;
+        let mask_left = (1 << (i + 2)) - 1;
+        let mask_left = !mask_left;
+        let bits_rght = (self.bits & mask_rght) >> 0;
+        let bits_left = (self.bits & mask_left) >> (i + 2);
+        let left = Expression::from((bits_left, size_left));
+        let rght = Expression::from((bits_rght, size_rght));
+        let unit = Expression::from(Pair::OneZero);
+        (left, unit, rght)
+    }
+    /// compare bits, ignore size
+    fn is_empty(self) -> bool {
+        self.bits == 0
+    }
+    /// extract the rightmost digit after the skip
+    fn suffix(&self) -> Ladder {
+        assert!(self.is_empty().not());
+        match self.bits & 1 {
+            0 => Ladder::F,
+            _ => Ladder::T,
+        }
+    }
+    /// extract the leftmost digit after the skip
+    fn prefix(&self) -> Ladder {
+        assert!(self.is_empty().not());
+        match (self.bits) & (1 << (self.size - 1)) {
+            0 => Ladder::F,
+            _ => Ladder::T,
+        }
+    }
+    /// concatenate
+    fn concatenate(a: Self, b: Self) -> Self {
+        assert!(a.size() + b.size() <= 64);
+        Self {
+            bits: a.bits << b.size() | b.bits,
+            size: a.size() + b.size(),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+/// represents composition of exactly two ladder operators
+enum Pair {
+    ZeroOne,
+    OneZero,
+}
+impl std::ops::Not for Pair {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        match self {
+            Self::ZeroOne => Self::OneZero,
+            Self::OneZero => unreachable!("we should never invert a OneZero"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+/// represents a single ladder operator
+enum Ladder {
+    T,
+    F,
+}
+impl std::ops::Not for Ladder {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        match self {
+            Self::T => Self::F,
+            Self::F => Self::T,
+        }
+    }
+}
+
+#[derive(Default, Debug, PartialEq, Eq, Clone, Copy)]
+/// wrapper type around integers
+struct Natural(usize);
+impl std::ops::Add for Natural {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
+}
+impl Natural {
+    fn zero() -> Self {
+        Self(0)
+    }
+    fn unit() -> Self {
+        Self(1)
+    }
+}
