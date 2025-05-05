@@ -176,6 +176,13 @@ mod tests {
     }
 
     #[test]
+    fn test_8_char_expressions() {
+        let expression = Expression::from("00100111");
+        let expectation = Natural::from(12);
+        assert_eq!(expression.expectation(), expectation);
+    }
+
+    #[test]
     fn test_from_str() {
         let expr = Expression::from("101");
         assert_eq!(expr.size(), 3);
