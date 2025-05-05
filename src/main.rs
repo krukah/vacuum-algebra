@@ -4,10 +4,9 @@ mod natural;
 mod pair;
 
 fn main() {
-    use expression::Expression;
-    use rand;
-
-    let expression = Expression::from((rand::random::<u8>() as u64, 8));
-    println!("expression: {}", expression);
-    println!("evaluation: {}", expression.expectation());
+    expression::Expression::default()
+        .into_iter()
+        .map(|exp| (exp, exp.expectation()))
+        .filter(|(_, expectation)| expectation != &natural::Natural::zero())
+        .for_each(|(exp, expectation)| println!("{} -> {}", exp, expectation));
 }

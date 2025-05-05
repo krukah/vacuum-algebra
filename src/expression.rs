@@ -47,6 +47,17 @@ impl From<(u64, usize)> for Expression {
         Self { bits, size }
     }
 }
+/// lazily generate, only stopping when we hit numeric overflow
+impl Iterator for Expression {
+    type Item = Self;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.bits() < u64::MAX {
+            Some(std::mem::replace(self, self.increment()))
+        } else {
+            None
+        }
+    }
+}
 /// helpful for debugging
 impl std::fmt::Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -55,7 +66,7 @@ impl std::fmt::Display for Expression {
         } else {
             write!(
                 f,
-                "{:_>width1$}{:0>width2$b}",
+                "{: >width1$}{:0>width2$b}",
                 "",
                 self.bits(),
                 width1 = 64 - self.size(),
@@ -161,6 +172,19 @@ impl Expression {
         let unit = Self::from(Pair::OneZero);
         (left, unit, rght)
     }
+
+    /// for Iterator implementation, we need to be able to
+    /// calculate the "next" Expression by counting and
+    /// checking if we're due for a size increment
+    fn increment(&self) -> Self {
+        let bits = self.bits();
+        let size = self.size();
+        if bits + 1 != (1 << size) {
+            Self::from((bits + 1, size)) // addition naturally increment bitstring
+        } else {
+            Self::from((0, size + 2)) // inc by 2 since odd sizes have 0 expectation
+        }
+    }
 }
 
 #[cfg(test)]
@@ -177,14 +201,50 @@ mod tests {
 
     #[test]
     fn test_3_char_expressions() {
-        assert_eq!(Expression::from("001").expectation(), Natural::zero());
-        assert_eq!(Expression::from("011").expectation(), Natural::zero());
         assert_eq!(Expression::from("000").expectation(), Natural::zero());
-        assert_eq!(Expression::from("100").expectation(), Natural::zero());
+        assert_eq!(Expression::from("001").expectation(), Natural::zero());
         assert_eq!(Expression::from("010").expectation(), Natural::zero());
+        assert_eq!(Expression::from("011").expectation(), Natural::zero());
+        assert_eq!(Expression::from("100").expectation(), Natural::zero());
         assert_eq!(Expression::from("101").expectation(), Natural::zero());
         assert_eq!(Expression::from("110").expectation(), Natural::zero());
         assert_eq!(Expression::from("111").expectation(), Natural::zero());
+    }
+
+    #[test]
+    fn test_iteration() {
+        let mut iter = Expression::default().into_iter();
+        assert_eq!(iter.next().unwrap(), Expression::from(""));
+        // skip ! (iter.next().unwrap(), Expression::from("0"));
+        // skip ! (iter.next().unwrap(), Expression::from("1"));
+        assert_eq!(iter.next().unwrap(), Expression::from("00"));
+        assert_eq!(iter.next().unwrap(), Expression::from("01"));
+        assert_eq!(iter.next().unwrap(), Expression::from("10"));
+        assert_eq!(iter.next().unwrap(), Expression::from("11"));
+        // skip ! (iter.next().unwrap(), Expression::from("000"));
+        // skip ! (iter.next().unwrap(), Expression::from("001"));
+        // skip ! (iter.next().unwrap(), Expression::from("010"));
+        // skip ! (iter.next().unwrap(), Expression::from("011"));
+        // skip ! (iter.next().unwrap(), Expression::from("100"));
+        // skip ! (iter.next().unwrap(), Expression::from("101"));
+        // skip ! (iter.next().unwrap(), Expression::from("110"));
+        // skip ! (iter.next().unwrap(), Expression::from("111"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0000"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0001"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0010"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0011"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0100"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0101"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0110"));
+        assert_eq!(iter.next().unwrap(), Expression::from("0111"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1000"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1001"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1010"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1011"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1100"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1101"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1110"));
+        assert_eq!(iter.next().unwrap(), Expression::from("1111"));
     }
 
     #[test]
