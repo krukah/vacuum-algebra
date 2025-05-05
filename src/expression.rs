@@ -33,9 +33,10 @@ impl<'a> From<&'a str> for Expression {
         assert!(value.len() <= 64);
         Self {
             size: value.len(),
-            bits: value.chars().fold(0u64, |acc, char| {
-                (acc << 1) | char.to_digit(2).unwrap() as u64
-            }),
+            bits: value
+                .chars()
+                .map(|c| c.to_digit(2).unwrap() as u64)
+                .fold(0u64, |acc, bit| (acc << 1) | bit),
         }
     }
 }
@@ -79,8 +80,6 @@ impl Expression {
             Natural::zero()
         } else if self.suffix() == Ladder::Dagger {
             Natural::zero()
-        } else if self == Self::from(Pair::OneZero) {
-            Natural::zero() // lowkey unreachable
         } else if self == Self::from(Pair::ZeroOne) {
             Natural::unit()
         } else {
