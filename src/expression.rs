@@ -105,7 +105,7 @@ impl Expression {
 
     /// compare bits, ignore size
     fn is_empty(self) -> bool {
-        self.bits == 0
+        self.bits() == 0
     }
 
     /// imbalance between Ladder operator variants implies zero expectation
@@ -116,7 +116,7 @@ impl Expression {
     /// extract the rightmost digit after the skip
     fn suffix(&self) -> Ladder {
         assert!(self.is_empty().not());
-        let lsb = self.bits & 1;
+        let lsb = self.bits() & 1;
         Ladder::from(lsb as usize)
     }
 
