@@ -76,11 +76,13 @@ impl Expression {
     pub fn expectation(self) -> Natural {
         if self.is_empty() {
             Natural::zero()
-        } else if self.is_imbalanced() {
+        } else if self.is_balanced().not() {
             Natural::zero()
         } else if self.prefix() == Ladder::Normal {
             Natural::zero()
         } else if self.suffix() == Ladder::Dagger {
+            Natural::zero()
+        } else if self == Self::from(Pair::OneZero) {
             Natural::zero()
         } else if self == Self::from(Pair::ZeroOne) {
             Natural::unit()
@@ -107,7 +109,7 @@ impl Expression {
     }
 
     /// imbalance between Ladder operator variants implies zero expectation
-    fn is_imbalanced(self) -> bool {
+    fn is_balanced(self) -> bool {
         self.size() == 2 * self.bits().count_ones() as usize
     }
 
