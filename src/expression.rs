@@ -13,8 +13,8 @@ pub struct Expression {
 impl From<Pair> for Expression {
     fn from(value: Pair) -> Self {
         match value {
-            Pair::ZeroOne => Self::from("01"),
-            Pair::OneZero => Self::from("10"),
+            Pair::ZeroOne => Self::from((1, 2)), // "01"
+            Pair::OneZero => Self::from((2, 2)), // "10"
         }
     }
 }
@@ -22,8 +22,8 @@ impl From<Pair> for Expression {
 impl From<Ladder> for Expression {
     fn from(value: Ladder) -> Self {
         match value {
-            Ladder::Normal => Self::from("1"),
-            Ladder::Dagger => Self::from("0"),
+            Ladder::Normal => Self::from((1, 1)), // "1"
+            Ladder::Dagger => Self::from((0, 1)), // "0"
         }
     }
 }
@@ -57,7 +57,7 @@ impl std::fmt::Display for Expression {
                 f,
                 "{:_>width1$}{:0>width2$b}",
                 "",
-                self.bits,
+                self.bits(),
                 width1 = 64 - self.size(),
                 width2 = 00 + self.size(),
             )
@@ -76,6 +76,8 @@ impl Expression {
     pub fn expectation(self) -> Natural {
         if self.is_empty() {
             Natural::zero()
+        } else if self.is_imbalanced() {
+            Natural::zero()
         } else if self.prefix() == Ladder::Normal {
             Natural::zero()
         } else if self.suffix() == Ladder::Dagger {
@@ -86,7 +88,7 @@ impl Expression {
             let (left, unit, rght) = self.split();
             let removed = left * rght;
             let swapped = left * unit * rght;
-            swapped.expectation() + removed.expectation()
+            removed.expectation() + swapped.expectation()
         }
     }
 
@@ -102,6 +104,11 @@ impl Expression {
     /// compare bits, ignore size
     fn is_empty(self) -> bool {
         self.bits == 0
+    }
+
+    /// imbalance between Ladder operator variants implies zero expectation
+    fn is_imbalanced(self) -> bool {
+        self.size() == 2 * self.bits().count_ones() as usize
     }
 
     /// extract the rightmost digit after the skip
@@ -134,6 +141,7 @@ impl Expression {
         const MASK: u64 = 0b11;
         const FLAG: u64 = 0b01;
         let i = (0u64..)
+            .inspect(|i| assert!(*i < 64))
             .map(|i| ((self.bits() & (MASK << i)), FLAG << i))
             .enumerate()
             .find(|(_, (self_bits, flag_bits))| self_bits == flag_bits)
@@ -175,6 +183,21 @@ mod tests {
         assert_eq!(Expression::from("101").expectation(), Natural::zero());
         assert_eq!(Expression::from("110").expectation(), Natural::zero());
         assert_eq!(Expression::from("111").expectation(), Natural::zero());
+    }
+
+    #[test]
+    fn test_runaway_substitution_1() {
+        let expression = Expression::from("00011110100001111100101101101111");
+        let expectation = Natural::zero();
+        assert_eq!(expression.expectation(), expectation);
+    }
+
+    #[test]
+    fn test_runaway_substitution_2() {
+        let expression =
+            Expression::from("0000000001101110111001111110010101110111100010000011010011111111");
+        let expectation = Natural::zero();
+        assert_eq!(expression.expectation(), expectation);
     }
 
     #[test]
