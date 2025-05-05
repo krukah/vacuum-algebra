@@ -1,7 +1,7 @@
-pub mod expression;
-pub mod ladder;
-pub mod natural;
-pub mod pair;
+mod expression;
+mod ladder;
+mod natural;
+mod pair;
 
 fn main() {
     use expression::Expression;

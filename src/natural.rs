@@ -20,6 +20,7 @@ impl Natural {
     pub fn unit() -> Self {
         Self(1)
     }
+    #[allow(dead_code)]
     pub fn size(&self) -> usize {
         self.0
     }
@@ -28,17 +29,14 @@ impl Natural {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
     fn test_natural_zero() {
         assert_eq!(Natural::zero().size(), 0);
     }
-
     #[test]
     fn test_natural_unit() {
         assert_eq!(Natural::unit().size(), 1);
     }
-
     #[test]
     fn test_natural_add() {
         assert_eq!(Natural::unit() + Natural::unit(), Natural(2));
