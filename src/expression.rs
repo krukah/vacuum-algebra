@@ -75,9 +75,11 @@ impl Expression {
     pub fn expectation(self) -> Natural {
         if self.is_empty() {
             Natural::zero()
-        } else if self.prefix() == Ladder::Dagger {
+        } else if self.prefix() == Ladder::Normal {
             Natural::zero()
         } else if self.suffix() == Ladder::Dagger {
+            Natural::zero()
+        } else if self == Self::from(Pair::OneZero) {
             Natural::zero()
         } else if self == Self::from(Pair::ZeroOne) {
             Natural::unit()
