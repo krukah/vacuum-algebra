@@ -9,7 +9,6 @@ pub struct Expression {
     bits: u64,
     size: usize,
 }
-
 /// typesafe infallible Pair conversion
 impl From<Pair> for Expression {
     fn from(value: Pair) -> Self {
@@ -19,7 +18,6 @@ impl From<Pair> for Expression {
         }
     }
 }
-
 /// typesafe infallible Ladder conversion
 impl From<Ladder> for Expression {
     fn from(value: Ladder) -> Self {
@@ -29,7 +27,7 @@ impl From<Ladder> for Expression {
         }
     }
 }
-
+/// not typesafe, fallile, string conversion. only use at compile time.
 impl<'a> From<&'a str> for Expression {
     fn from(value: &'a str) -> Self {
         assert!(value.len() <= 64);
@@ -41,7 +39,6 @@ impl<'a> From<&'a str> for Expression {
         }
     }
 }
-
 /// typesafe infallible bit-map conversion
 impl From<(u64, usize)> for Expression {
     fn from((bits, size): (u64, usize)) -> Self {
@@ -49,7 +46,6 @@ impl From<(u64, usize)> for Expression {
         Self { bits, size }
     }
 }
-
 /// helpful for debugging
 impl std::fmt::Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -67,7 +63,6 @@ impl std::fmt::Display for Expression {
         }
     }
 }
-
 /// concatenation
 impl std::ops::Mul for Expression {
     type Output = Self;
@@ -75,7 +70,6 @@ impl std::ops::Mul for Expression {
         Self::concatenate(self, rhs)
     }
 }
-
 impl Expression {
     /// calculate the expectation value recursively
     pub fn expectation(self) -> Natural {
@@ -99,14 +93,14 @@ impl Expression {
     }
 
     /// read the length
-    pub fn size(&self) -> usize {
+    fn size(&self) -> usize {
         self.size
     }
 
     /// split the expression into three parts,
     /// assuming there is a middle unit to extract
     /// eagerly
-    pub fn split(self) -> (Self, Self, Self) {
+    fn split(self) -> (Self, Self, Self) {
         const MASK: u64 = 0b11;
         const FLAG: u64 = 0b01;
         let i = (0u64..64u64)
@@ -122,37 +116,33 @@ impl Expression {
         let mask_left = !mask_left;
         let bits_rght = (self.bits & mask_rght) >> 0;
         let bits_left = (self.bits & mask_left) >> (i + 2);
-        let left = Expression::from((bits_left, size_left));
-        let rght = Expression::from((bits_rght, size_rght));
-        let unit = Expression::from(Pair::OneZero);
+        let left = Self::from((bits_left, size_left));
+        let rght = Self::from((bits_rght, size_rght));
+        let unit = Self::from(Pair::OneZero);
         (left, unit, rght)
     }
 
     /// compare bits, ignore size
-    pub fn is_empty(self) -> bool {
+    fn is_empty(self) -> bool {
         self.bits == 0
     }
 
     /// extract the rightmost digit after the skip
-    pub fn suffix(&self) -> Ladder {
+    fn suffix(&self) -> Ladder {
         assert!(self.is_empty().not());
-        match self.bits & 1 {
-            0 => Ladder::F,
-            _ => Ladder::T,
-        }
+        let lsb = self.bits & 1;
+        Ladder::from(lsb as usize)
     }
 
     /// extract the leftmost digit after the skip
-    pub fn prefix(&self) -> Ladder {
+    fn prefix(&self) -> Ladder {
         assert!(self.is_empty().not());
-        match (self.bits) & (1 << (self.size - 1)) {
-            0 => Ladder::F,
-            _ => Ladder::T,
-        }
+        let msb = (self.bits) & (1 << (self.size - 1));
+        Ladder::from(msb as usize)
     }
 
     /// concatenate
-    pub fn concatenate(a: Self, b: Self) -> Self {
+    fn concatenate(a: Self, b: Self) -> Self {
         assert!(a.size() + b.size() <= 64);
         Self {
             bits: a.bits << b.size() | b.bits,
@@ -205,5 +195,37 @@ mod tests {
         assert_eq!(left, Expression::from("11"));
         assert_eq!(unit, Expression::from("10"));
         assert_eq!(rght, Expression::from("00"));
+        // constants that are bit-wise representations of Pairs,
+        // but not actually typed as Pairs, useful to find
+        // position of first occurence of FLAG
+        //
+        // self = 0b_1010_1111 (binary representation)
+        // FLAG = 0b_01
+        // MASK = 0b_11
+        // i    = 3 (position of first occurrence of `01`)
+        //
+        // LEFT CALCULATION:
+        // self.0                         = 0b_1010_1111
+        // i                              =         3...
+        // u64::MAX                       = 0b_1111_1111
+        // u64::MAX << (i + 2)            = 0b_1111_1111 << 5
+        //                                = 0b_1110_0000
+        // self.0 & (u64::MAX << (i + 2)) = 0b_1010_1111
+        //                                & 0b_1110_0000
+        //                                = 0b_1010_0000
+        //
+        // RIGHT CALCULATION:
+        // 1 << i                         = 1 << 3
+        //                                = 0b______1000
+        // (1 << i) - 1                   = 0b______1000 - 1
+        //                                = 0b______0111
+        // self.0 & ((1 << i) - 1)        = 0b_1010_1111
+        //                                & 0b______0111
+        //                                = 0b______0111
+        //
+        // RESULT:
+        // left = 0b_101_00_000 => Operator(_)
+        // pair = 0b_____01_000 => Pair::OneZero
+        // rght = 0b________111 => Operator(_)
     }
 }

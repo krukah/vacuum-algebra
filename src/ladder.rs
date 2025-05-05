@@ -4,7 +4,15 @@ pub enum Ladder {
     T,
     F,
 }
-
+impl From<usize> for Ladder {
+    fn from(x: usize) -> Self {
+        match x.count_ones() {
+            0 => Self::F,
+            1 => Self::T,
+            _ => panic!("invalid ladder value: {}", x),
+        }
+    }
+}
 impl std::ops::Not for Ladder {
     type Output = Self;
     fn not(self) -> Self::Output {

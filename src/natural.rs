@@ -8,16 +8,18 @@ impl std::ops::Add for Natural {
         Self(self.0 + rhs.0)
     }
 }
-
+impl std::fmt::Display for Natural {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 impl Natural {
     pub fn zero() -> Self {
         Self(0)
     }
-
     pub fn unit() -> Self {
         Self(1)
     }
-
     pub fn size(&self) -> usize {
         self.0
     }

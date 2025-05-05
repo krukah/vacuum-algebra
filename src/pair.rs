@@ -4,7 +4,6 @@ pub enum Pair {
     ZeroOne,
     OneZero,
 }
-
 impl std::ops::Not for Pair {
     type Output = Self;
     fn not(self) -> Self::Output {
