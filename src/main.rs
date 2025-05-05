@@ -6,7 +6,7 @@ mod pair;
 fn main() {
     expression::Expression::default()
         .into_iter()
-        .map(|exp| (exp, exp.expectation()))
-        .filter(|(_, expectation)| expectation != &natural::Natural::zero())
-        .for_each(|(exp, expectation)| println!("{} -> {}", exp, expectation));
+        .map(|exp| (exp, exp.expectation().size()))
+        .filter(|(_, expectation)| expectation != &0)
+        .for_each(|(exp, expectation)| println!("{} -> {:>16}", exp, expectation));
 }
