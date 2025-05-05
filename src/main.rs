@@ -6,9 +6,17 @@ mod pair;
 fn main() {
     use expression::Expression;
     use rand;
-    // 0000000001101110111001111110010101110111100010000011010011111111
-    // this value hangs, worth investigating
-    let expression = Expression::from((rand::random::<u64>(), 64));
+
+    let expression = Expression::from((rand::random::<u8>() as u64, 8));
     println!("expression: {}", expression);
     println!("evaluation: {}", expression.expectation());
+
+    // case studies
+
+    // never returns
+    // 0000000001101110111001111110010101110111100010000011010011111111
+    // ________________________________00011110100001111100101101101111
+
+    // returns 2
+    // ________________________________________________________01001101
 }
