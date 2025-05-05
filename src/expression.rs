@@ -80,7 +80,7 @@ impl Expression {
         } else if self.suffix() == Ladder::Dagger {
             Natural::zero()
         } else if self == Self::from(Pair::OneZero) {
-            Natural::zero()
+            Natural::zero() // lowkey unreachable
         } else if self == Self::from(Pair::ZeroOne) {
             Natural::unit()
         } else {
@@ -98,31 +98,6 @@ impl Expression {
     /// read the bits
     fn bits(&self) -> u64 {
         self.bits
-    }
-
-    /// split the expression into three parts,
-    /// assuming there is a middle unit to extract
-    /// eagerly
-    fn split(self) -> (Self, Self, Self) {
-        const MASK: u64 = 0b11;
-        const FLAG: u64 = 0b01;
-        let i = (0u64..64u64)
-            .map(|i| ((self.bits() & (MASK << i)), FLAG << i))
-            .enumerate()
-            .find(|(_, (self_bits, flag_bits))| self_bits == flag_bits)
-            .map(|(occurence, _)| occurence)
-            .expect("there must be an instance of 01, from upstream assertion");
-        let size_rght = i;
-        let size_left = self.size() - i - 2;
-        let mask_rght = (1 << (i + 0)) - 1;
-        let mask_left = (1 << (i + 2)) - 1;
-        let mask_left = !mask_left;
-        let bits_rght = (self.bits() & mask_rght) >> 0;
-        let bits_left = (self.bits() & mask_left) >> (i + 2);
-        let left = Self::from((bits_left, size_left));
-        let rght = Self::from((bits_rght, size_rght));
-        let unit = Self::from(Pair::OneZero);
-        (left, unit, rght)
     }
 
     /// compare bits, ignore size
@@ -151,6 +126,31 @@ impl Expression {
             bits: a.bits() << b.size() | b.bits(),
             size: a.size() + b.size(),
         }
+    }
+
+    /// split the expression into three parts,
+    /// assuming there is a middle unit to extract
+    /// eagerly
+    fn split(self) -> (Self, Self, Self) {
+        const MASK: u64 = 0b11;
+        const FLAG: u64 = 0b01;
+        let i = (0u64..)
+            .map(|i| ((self.bits() & (MASK << i)), FLAG << i))
+            .enumerate()
+            .find(|(_, (self_bits, flag_bits))| self_bits == flag_bits)
+            .map(|(occurence, _)| occurence)
+            .expect("there must be an instance of 01, from upstream assertion");
+        let size_rght = i;
+        let size_left = self.size() - i - 2;
+        let mask_rght = (1 << (i + 0)) - 1;
+        let mask_left = (1 << (i + 2)) - 1;
+        let mask_left = !mask_left;
+        let bits_rght = (self.bits() & mask_rght) >> 0;
+        let bits_left = (self.bits() & mask_left) >> (i + 2);
+        let left = Self::from((bits_left, size_left));
+        let rght = Self::from((bits_rght, size_rght));
+        let unit = Self::from(Pair::OneZero);
+        (left, unit, rght)
     }
 }
 
@@ -198,9 +198,10 @@ mod tests {
 
     #[test]
     fn test_concatenation() {
-        let a = Expression::from("01");
-        let b = Expression::from("10");
-        assert_eq!(a * b, Expression::from("0110"));
+        let a = Expression::from("010");
+        let b = Expression::from("100");
+        let c = Expression::from("010100");
+        assert_eq!(a * b, c);
     }
 
     #[test]
