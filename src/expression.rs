@@ -1,7 +1,7 @@
 use crate::ladder::Ladder;
 use crate::natural::Natural;
 use crate::pair::Pair;
-use crate::render::Line;
+use crate::render::Segment;
 use std::ops::Add;
 use std::ops::Not;
 
@@ -189,16 +189,22 @@ impl Expression {
     }
 }
 
-impl Line for Expression {
+impl Segment for Expression {
+    /// draw color with log scale (in expectation)
     fn scale(&self) -> f32 {
-        (self.expectation().size().add(1) as f32).ln()
+        (self.expectation().size().add(1) as f32).log2()
     }
 
-    fn beg(&self) -> (usize, usize) {
+    /// draw thickness with linear scale (in depth)
+    fn stroke(&self) -> f32 {
+        self.size() as f32
+    }
+
+    fn beg(&self) -> (f32, f32) {
         todo!("something recursive related to expression.next() ?")
     }
 
-    fn end(&self) -> (usize, usize) {
+    fn end(&self) -> (f32, f32) {
         todo!("something recursive related to expression.next() ?")
     }
 }
