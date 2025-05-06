@@ -1,12 +1,12 @@
-mod expression;
-mod ladder;
-mod natural;
-mod pair;
+use vacuum::*;
 
 fn main() {
-    expression::Expression::default()
+    crate::expression::Expression::default()
         .into_iter()
-        .map(|exp| (exp, exp.expectation().size()))
+        .map(|expression| (expression, expression.expectation().size()))
         .filter(|(_, expectation)| expectation != &0)
-        .for_each(|(exp, expectation)| println!("{} -> {:>16}", exp, expectation));
+        .map(|(expression, size)| (expression.to_string(), size))
+        .collect::<std::collections::BTreeMap<String, usize>>()
+        .iter()
+        .for_each(|(expression, expectation)| println!("{} -> {:>16}", expression, expectation));
 }

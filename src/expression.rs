@@ -1,6 +1,8 @@
 use crate::ladder::Ladder;
 use crate::natural::Natural;
 use crate::pair::Pair;
+use crate::render::Line;
+use std::ops::Add;
 use std::ops::Not;
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
@@ -22,8 +24,8 @@ impl From<Pair> for Expression {
 impl From<Ladder> for Expression {
     fn from(value: Ladder) -> Self {
         match value {
-            Ladder::Normal => Self::from((1, 1)), // "1"
-            Ladder::Dagger => Self::from((0, 1)), // "0"
+            Ladder::Lower => Self::from((1, 1)), // "1"
+            Ladder::Raise => Self::from((0, 1)), // "0"
         }
     }
 }
@@ -35,8 +37,8 @@ impl<'a> From<&'a str> for Expression {
             size: value.len(),
             bits: value
                 .chars()
-                .map(|c| c.to_digit(2).unwrap() as u64)
-                .fold(0u64, |acc, bit| (acc << 1) | bit),
+                .map(|c| c.to_digit(2).expect("bit") as u64)
+                .fold(0u64, |acc, bit| bit | (acc << 1)),
         }
     }
 }
@@ -89,9 +91,9 @@ impl Expression {
             Natural::zero()
         } else if self.is_balanced().not() {
             Natural::zero()
-        } else if self.prefix() == Ladder::Normal {
+        } else if self.prefix() == Ladder::Lower {
             Natural::zero()
-        } else if self.suffix() == Ladder::Dagger {
+        } else if self.suffix() == Ladder::Raise {
             Natural::zero()
         } else if self == Self::from(Pair::OneZero) {
             Natural::zero()
@@ -184,6 +186,20 @@ impl Expression {
         } else {
             Self::from((0, size + 2)) // inc by 2 since odd sizes have 0 expectation
         }
+    }
+}
+
+impl Line for Expression {
+    fn scale(&self) -> f32 {
+        (self.expectation().size().add(1) as f32).ln()
+    }
+
+    fn beg(&self) -> (usize, usize) {
+        todo!("something recursive related to expression.next() ?")
+    }
+
+    fn end(&self) -> (usize, usize) {
+        todo!("something recursive related to expression.next() ?")
     }
 }
 
@@ -294,37 +310,5 @@ mod tests {
         assert_eq!(left, Expression::from("11"));
         assert_eq!(unit, Expression::from("10"));
         assert_eq!(rght, Expression::from("00"));
-        // constants that are bit-wise representations of Pairs,
-        // but not actually typed as Pairs, useful to find
-        // position of first occurence of FLAG
-        //
-        // self = 0b_1010_1111 (binary representation)
-        // FLAG = 0b_01
-        // MASK = 0b_11
-        // i    = 3 (position of first occurrence of `01`)
-        //
-        // LEFT CALCULATION:
-        // self.0                         = 0b_1010_1111
-        // i                              =         3...
-        // u64::MAX                       = 0b_1111_1111
-        // u64::MAX << (i + 2)            = 0b_1111_1111 << 5
-        //                                = 0b_1110_0000
-        // self.0 & (u64::MAX << (i + 2)) = 0b_1010_1111
-        //                                & 0b_1110_0000
-        //                                = 0b_1010_0000
-        //
-        // RIGHT CALCULATION:
-        // 1 << i                         = 1 << 3
-        //                                = 0b______1000
-        // (1 << i) - 1                   = 0b______1000 - 1
-        //                                = 0b______0111
-        // self.0 & ((1 << i) - 1)        = 0b_1010_1111
-        //                                & 0b______0111
-        //                                = 0b______0111
-        //
-        // RESULT:
-        // left = 0b_101_00_000 => Operator(_)
-        // pair = 0b_____01_000 => Pair::OneZero
-        // rght = 0b________111 => Operator(_)
     }
 }
