@@ -1,4 +1,5 @@
 use svg::node::element::Line;
+use svg::node::element::Rectangle;
 use svg::Document;
 
 const fn w() -> usize {
@@ -35,18 +36,54 @@ fn render<T>(line: T) -> Line
 where
     T: Segment,
 {
+    // Convert scale to a color (blue to red gradient)
+    let scale = line.scale().min(1.0).max(0.0); // Ensure scale is between 0.0 and 1.0
+    let r = (scale * 255.0) as u8;
+    let g = 0;
+    let b = ((1.0 - scale) * 255.0) as u8;
+    let color = format!("rgb({},{},{})", r, g, b);
     Line::new()
-        .set("x1", line.beg().0)
-        .set("y1", line.beg().1)
-        .set("x2", line.end().0)
-        .set("y2", line.end().1)
-        .set("stroke", line.scale())
+        .set("x1", line.beg().0 * w() as f32)
+        .set("y1", line.beg().1 * h() as f32)
+        .set("x2", line.end().0 * w() as f32)
+        .set("y2", line.end().1 * h() as f32)
+        .set("stroke", color)
         .set("stroke-width", line.stroke())
 }
 
 fn canvas() -> Document {
+    // Create rectangle for bounding box
+    let bounds = Rectangle::new()
+        .set("x", 0)
+        .set("y", 0)
+        .set("width", w())
+        .set("height", h())
+        .set("fill", "none")
+        .set("stroke", "black")
+        .set("stroke-width", 1);
+    // Create x-axis (horizontal line through middle)
+    let x_axis = Line::new()
+        .set("x1", 0)
+        .set("y1", h() / 2)
+        .set("x2", w())
+        .set("y2", h() / 2)
+        .set("stroke", "gray")
+        .set("stroke-width", 1)
+        .set("stroke-dasharray", "4 4");
+    // Create y-axis (vertical line through middle)
+    let y_axis = Line::new()
+        .set("x1", w() / 2)
+        .set("y1", 0)
+        .set("x2", w() / 2)
+        .set("y2", h())
+        .set("stroke", "gray")
+        .set("stroke-width", 1)
+        .set("stroke-dasharray", "4 4");
     Document::new()
         .set("viewBox", (0, 0, w(), h()))
         .set("width", w())
         .set("height", h())
+        .add(bounds)
+        .add(x_axis)
+        .add(y_axis)
 }

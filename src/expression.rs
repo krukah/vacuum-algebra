@@ -192,30 +192,63 @@ impl Expression {
 impl Segment for Expression {
     /// draw color with log scale (in expectation)
     fn scale(&self) -> f32 {
-        (self.expectation().size().add(1) as f32).log2()
+        (self.expectation().size().add(1) as f32).log2() / 8.
     }
 
-    /// draw thickness with linear scale (in depth)
+    /// draw thickness with inverse quadratic scale (in depth)
     fn stroke(&self) -> f32 {
-        self.size() as f32
+        4. - ((self.size() as f32) / 16.)
     }
 
     fn beg(&self) -> (f32, f32) {
-        todo!(
-            "
-            how to map expression to the beginning of its line segment
-            assuming (x, y) in [0, 1]
-            something recursive ? related to expression.next() ?"
-        )
+        let mut x = 0.5;
+        let mut y = 0.5;
+        let mut d = 0.5;
+        for pair in self
+            .to_string()
+            .trim()
+            .as_bytes()
+            .chunks(2)
+            .take((self.size() / 2) - 1) // skip the last pair
+            .map(std::str::from_utf8)
+            .map(Result::unwrap)
+        {
+            d /= 2.;
+            match pair {
+                "00" => y -= d, // down
+                "01" => x += d, // right
+                "10" => y += d, // up
+                "11" => x -= d, // left
+                "" => break,
+                x => unreachable!("invalid pair: {x}"),
+            }
+        }
+        (x, y)
     }
 
     fn end(&self) -> (f32, f32) {
-        todo!(
-            "
-            how to map expression to the beginning of its line segment
-            assuming (x, y) in [0, 1]
-            something recursive ? related to expression.next() ?"
-        )
+        let mut x = 0.5;
+        let mut y = 0.5;
+        let mut d = 0.5;
+        for pair in self
+            .to_string()
+            .trim()
+            .as_bytes()
+            .chunks(2)
+            .map(std::str::from_utf8)
+            .map(Result::unwrap)
+        {
+            d /= 2.;
+            match pair {
+                "00" => y -= d, // down
+                "01" => x += d, // right
+                "10" => y += d, // up
+                "11" => x -= d, // left
+                "" => break,
+                x => unreachable!("invalid pair: {x}"),
+            }
+        }
+        (x, y)
     }
 }
 
