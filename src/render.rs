@@ -19,6 +19,70 @@ pub trait Segment {
     fn stroke(&self) -> f32;
 }
 
+impl Segment for crate::expression::Expression {
+    /// draw color with log scale (in expectation)
+    fn scale(&self) -> f32 {
+        (self.expectation().size() as f32)
+    }
+
+    /// draw thickness with inverse quadratic scale (in depth)
+    fn stroke(&self) -> f32 {
+        // 4. - ((self.size() as f32) / 32.)
+        0.5 + (1. + self.expectation().size() as f32).log2() / 2.
+    }
+
+    fn beg(&self) -> (f32, f32) {
+        let mut x = 0.5;
+        let mut y = 0.5;
+        let mut d = 0.5;
+        for pair in self
+            .to_string()
+            .trim()
+            .as_bytes()
+            .chunks(2)
+            .take((self.size() / 2).saturating_sub(1)) // skip the last pair
+            .map(std::str::from_utf8)
+            .map(Result::unwrap)
+        {
+            d /= 2.;
+            match pair {
+                "00" => y -= d, // down
+                "01" => x += d, // right
+                "10" => y += d, // up
+                "11" => x -= d, // left
+                "" => break,
+                x => unreachable!("invalid pair: {x}"),
+            }
+        }
+        (x, y)
+    }
+
+    fn end(&self) -> (f32, f32) {
+        let mut x = 0.5;
+        let mut y = 0.5;
+        let mut d = 0.5;
+        for pair in self
+            .to_string()
+            .trim()
+            .as_bytes()
+            .chunks(2)
+            .map(std::str::from_utf8)
+            .map(Result::unwrap)
+        {
+            d /= 2.;
+            match pair {
+                "00" => y -= d, // down
+                "01" => x += d, // right
+                "10" => y += d, // up
+                "11" => x -= d, // left
+                "" => break,
+                x => unreachable!("invalid pair: {x}"),
+            }
+        }
+        (x, y)
+    }
+}
+
 pub fn draw<T, I>(lines: I) -> std::io::Result<()>
 where
     T: Segment,

@@ -64,7 +64,7 @@ impl Iterator for Expression {
 impl std::fmt::Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.is_empty() {
-            write!(f, "{:_>w$}", "", w = 64 - self.size())
+            write!(f, "{: >w$}", "", w = 64 - self.size())
         } else {
             write!(
                 f,
@@ -108,11 +108,11 @@ impl Expression {
     }
 
     /// read the length
-    fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.size
     }
     /// read the bits
-    fn bits(&self) -> u64 {
+    pub fn bits(&self) -> u64 {
         self.bits
     }
 
@@ -186,69 +186,6 @@ impl Expression {
         } else {
             Self::from((0, size + 2)) // inc by 2 since odd sizes have 0 expectation
         }
-    }
-}
-
-impl Segment for Expression {
-    /// draw color with log scale (in expectation)
-    fn scale(&self) -> f32 {
-        (self.expectation().size().add(1) as f32).log2() / 8.
-    }
-
-    /// draw thickness with inverse quadratic scale (in depth)
-    fn stroke(&self) -> f32 {
-        4. - ((self.size() as f32) / 16.)
-    }
-
-    fn beg(&self) -> (f32, f32) {
-        let mut x = 0.5;
-        let mut y = 0.5;
-        let mut d = 0.5;
-        for pair in self
-            .to_string()
-            .trim()
-            .as_bytes()
-            .chunks(2)
-            .take((self.size() / 2) - 1) // skip the last pair
-            .map(std::str::from_utf8)
-            .map(Result::unwrap)
-        {
-            d /= 2.;
-            match pair {
-                "00" => y -= d, // down
-                "01" => x += d, // right
-                "10" => y += d, // up
-                "11" => x -= d, // left
-                "" => break,
-                x => unreachable!("invalid pair: {x}"),
-            }
-        }
-        (x, y)
-    }
-
-    fn end(&self) -> (f32, f32) {
-        let mut x = 0.5;
-        let mut y = 0.5;
-        let mut d = 0.5;
-        for pair in self
-            .to_string()
-            .trim()
-            .as_bytes()
-            .chunks(2)
-            .map(std::str::from_utf8)
-            .map(Result::unwrap)
-        {
-            d /= 2.;
-            match pair {
-                "00" => y -= d, // down
-                "01" => x += d, // right
-                "10" => y += d, // up
-                "11" => x -= d, // left
-                "" => break,
-                x => unreachable!("invalid pair: {x}"),
-            }
-        }
-        (x, y)
     }
 }
 
