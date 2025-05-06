@@ -201,11 +201,21 @@ impl Segment for Expression {
     }
 
     fn beg(&self) -> (f32, f32) {
-        todo!("something recursive related to expression.next() ?")
+        todo!(
+            "
+            how to map expression to the beginning of its line segment
+            assuming (x, y) in [0, 1]
+            something recursive ? related to expression.next() ?"
+        )
     }
 
     fn end(&self) -> (f32, f32) {
-        todo!("something recursive related to expression.next() ?")
+        todo!(
+            "
+            how to map expression to the beginning of its line segment
+            assuming (x, y) in [0, 1]
+            something recursive ? related to expression.next() ?"
+        )
     }
 }
 
